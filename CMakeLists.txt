@@ -125,6 +125,7 @@ add_executable(${BINARY_NAME}
     firmware/applebus/buffers.c
 
     firmware/a2c/a2c.c
+    firmware/a2c/sidebar.c
 
     firmware/dvi/a2dvi.c
     firmware/dvi/tmds.c
@@ -208,6 +209,7 @@ add_executable(${BINARY_NAME}
     firmware/applebus/buffers.c
 
     firmware/a2c/a2c.c
+    firmware/a2c/sidebar.c
 
     firmware/dvi/a2dvi.c
     firmware/dvi/tmds.c

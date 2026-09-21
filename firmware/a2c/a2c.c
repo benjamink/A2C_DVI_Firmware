@@ -42,6 +42,7 @@ SOFTWARE.
 #include "menu/menu.h"
 #include "debug/debug.h"
 #include "dvi/a2dvi.h"
+#include "sidebar.h"
 
 
 // #define NO_NTSC_LUT     1    //  If we need extra memory for testing
@@ -431,6 +432,33 @@ static bool DELAYED_COPY_CODE(debug_command)(char * command_name, int index, boo
     return result;
 }
 
+//  Sidebar logo / settings readout: OFF / LOGO / INFO
+static bool DELAYED_COPY_CODE(sidebar_command)(char * command_name, int index, bool update, bool selected)
+{
+    bool result = false;
+
+    if (update == true)
+    {
+        if (index == 0)
+            cfg_sidebar = SIDEBAR_OFF;
+        else if (index == 1)
+            cfg_sidebar = SIDEBAR_LOGO;
+        else if (index == 2)
+            cfg_sidebar = SIDEBAR_LOGO_INFO;
+    }
+    else
+    {
+        if ((index == 0) && (cfg_sidebar == SIDEBAR_OFF))
+            result = true;
+        else if ((index == 1) && (cfg_sidebar == SIDEBAR_LOGO))
+            result = true;
+        else if ((index == 2) && (cfg_sidebar == SIDEBAR_LOGO_INFO))
+            result = true;
+    }
+
+    return result;
+}
+
 #ifdef FEATURE_A2_AUDIO
 //  Sound Off / On
 static bool DELAYED_COPY_CODE(audio_command)(char * command_name, int index, bool update, bool selected)
@@ -614,6 +642,8 @@ struct menu_commands DELAYED_COPY_DATA(a2c_menu_items_aux)[] =
     { "TYPE:", { {"IIC", machine_command }, {"LASER", machine_command }, {"", NULL } } },
     { "", { {"", NULL }, {"", NULL }, {"", NULL } } },
     { "DEBUG:", { {"OFF", debug_command }, {"ON", debug_command }, {"", NULL } } },
+    { "", { {"", NULL }, {"", NULL }, {"", NULL } } },
+    { "BEZEL:", { {"OFF", sidebar_command }, {"LOGO", sidebar_command }, {"INFO", sidebar_command } } },
     { "", { {"", NULL }, {"", NULL }, {"", NULL } } },
     { "SET:", { {"SAVE", config_command }, {"DEFAULT", config_command }, {"BACK", config_command } } },
     { "", { {"", NULL }, {"", NULL }, {"", NULL } } },
@@ -1127,6 +1157,13 @@ static void DELAYED_COPY_CODE(render_a2c_full_line)(a2c_render_mode_mode_t rende
     dvi_get_scanline(tmdsbuf);                                              //  We only spend about 0.2% of the tim,e blocking
     dvi_scanline_rgb(tmdsbuf, tmdsbuf_red, tmdsbuf_green, tmdsbuf_blue);
 
+    // Capture the start of the left margin before the fill loop below
+    // advances tmdsbuf_red/green/blue, so the sidebar overlay knows where
+    // to write.
+    uint32_t* margin_red0   = tmdsbuf_red;
+    uint32_t* margin_green0 = tmdsbuf_green;
+    uint32_t* margin_blue0  = tmdsbuf_blue;
+
     uint64_t start_time = to_us_since_boot (get_absolute_time());
 
     uint32_t left_margin = ((dvi_x_resolution - (32 * 18)) / 8) * 2;        //  We want this to always be even.  18 32-bit samples of SEROUT
@@ -1141,6 +1178,17 @@ static void DELAYED_COPY_CODE(render_a2c_full_line)(a2c_render_mode_mode_t rende
         *(tmdsbuf_red++)   = TMDS_SYMBOL_0_0;
         *(tmdsbuf_green++) = TMDS_SYMBOL_0_0;
         *(tmdsbuf_blue++)  = TMDS_SYMBOL_0_0;
+    }
+
+    //  Sidebar logo / settings overlay: replaces some of the black we just
+    //  wrote above with precomputed art, centered within whichever margin
+    //  width the current video mode has (32px @640x480, 72px @720x480).
+    //  A no-op (single enum compare) when cfg_sidebar is SIDEBAR_OFF.
+    if (cfg_sidebar != SIDEBAR_OFF)
+    {
+        sidebar_render_line(line, color_mode,
+                             margin_red0, margin_green0, margin_blue0,
+                             right_margin, left_margin);
     }
 
     if (render_mode == RM_BW) //  mono_rendering
@@ -1344,6 +1392,45 @@ void DELAYED_COPY_CODE(render_a2c)()
     // set flag when monochrome rendering is requested
     mono_rendering = (internal_flags & IFLAGS_FORCED_MONO);
 
+    // Once per frame: refresh the sidebar settings readout (cheap - a few
+    // string compares) and rebuild its precomputed bar content if anything
+    // changed. Never done from inside the per-scanline render loop.
+    if (cfg_sidebar == SIDEBAR_LOGO_INFO)
+    {
+        char l1[5], l2[5], l3[5];
+
+        if (cfg_color_style == CS_A2DVI)
+            strcpy(l1, "A2DV");
+        else if (cfg_color_style == CS_CLAMP)
+            strcpy(l1, "CLMP");
+        else
+            strcpy(l1, "NTSC");
+
+        if (mono_rendering)
+        {
+            if (color_mode == COLOR_MODE_GREEN)
+                strcpy(l2, "GRN");
+            else if (color_mode == COLOR_MODE_AMBER)
+                strcpy(l2, "AMB");
+            else
+                strcpy(l2, "B&W");
+        }
+        else
+        {
+            strcpy(l2, (cfg_rendering_fx == FX_ENABLED) ? "MIX" : "CLR");
+        }
+
+        if (cfg_scanline_mode == ScanlinesOn)
+            strcpy(l3, "SCAN");
+        else if (cfg_scanline_mode == ScanlinesMonochrome)
+            strcpy(l3, "SCNM");
+        else
+            strcpy(l3, "OFF");
+
+        sidebar_set_info(l1, l2, l3);
+    }
+    sidebar_rebuild_if_dirty();
+
     if (s_show_menu_screen)
     {
         if (s_menu_screen_init == false)
@@ -1438,7 +1525,9 @@ void __time_critical_func(a2c_init)()
     for (int x = 0; x < 19; x++)
         for (int y = 0; y < 192; y++)
             s_screen_buffer[y][x] = 0;
-    
+
+    sidebar_init();
+
 #ifdef FEATURE_A2_AUDIO
     adc_init();
 #endif

@@ -65,10 +65,10 @@ void sidebar_set_info(const char* const* lines, uint8_t count);
 // from render_a2c(), never from inside the per-scanline render loop.
 void sidebar_rebuild_if_dirty(void);
 
-// Emits one scanline's worth of logo/settings content into both margins,
-// overwriting some of the black `render_a2c_full_line()` already wrote there.
-// Must be called AFTER that function's margin black-fill loop and BEFORE
-// dvi_send_scanline().
+// Emits one scanline's worth of logo/settings content into the LEFT margin
+// only - the right bar is left as the plain black
+// render_a2c_full_line()'s fill loop already wrote there. Must be called
+// AFTER that function's margin black-fill loop and BEFORE dvi_send_scanline().
 //
 //   line             - 0..191, same indexing as s_screen_buffer
 //   color_mode       - COLOR_MODE_BW / GREEN / AMBER; the art inherits the
@@ -76,13 +76,10 @@ void sidebar_rebuild_if_dirty(void);
 //   red0/green0/blue0- pointers to the FIRST word of the left margin for
 //                       this scanline (captured before the black-fill loop
 //                       advances them)
-//   right_margin     - word offset from red0/green0/blue0 to the first word
-//                       of the right margin (render_a2c_full_line() already
-//                       computes this as `right_margin`)
 //   left_margin      - the full margin width in words, as computed by
 //                       render_a2c_full_line() (16 words/32px at 640x480,
 //                       36 words/72px at 720x480). The bar's 16-word (32px)
 //                       content is centered within it.
 void sidebar_render_line(uint32_t line, uint8_t color_mode,
                           uint32_t* red0, uint32_t* green0, uint32_t* blue0,
-                          uint32_t right_margin, uint32_t left_margin);
+                          uint32_t left_margin);

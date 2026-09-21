@@ -1180,15 +1180,16 @@ static void DELAYED_COPY_CODE(render_a2c_full_line)(a2c_render_mode_mode_t rende
         *(tmdsbuf_blue++)  = TMDS_SYMBOL_0_0;
     }
 
-    //  Sidebar logo / settings overlay: replaces some of the black we just
-    //  wrote above with precomputed art, centered within whichever margin
-    //  width the current video mode has (32px @640x480, 72px @720x480).
-    //  A no-op (single enum compare) when cfg_sidebar is SIDEBAR_OFF.
+    //  Sidebar logo / settings overlay: left bar only. Replaces some of the
+    //  black we just wrote above with precomputed art, centered within
+    //  whichever margin width the current video mode has (32px @640x480,
+    //  72px @720x480). A no-op (single enum compare) when cfg_sidebar is
+    //  SIDEBAR_OFF.
     if (cfg_sidebar != SIDEBAR_OFF)
     {
         sidebar_render_line(line, color_mode,
                              margin_red0, margin_green0, margin_blue0,
-                             right_margin, left_margin);
+                             left_margin);
     }
 
     if (render_mode == RM_BW) //  mono_rendering

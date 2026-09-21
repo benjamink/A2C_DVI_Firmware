@@ -202,7 +202,7 @@ static inline void sidebar_emit16(uint32_t* r, uint32_t* g, uint32_t* b,
 
 void sidebar_render_line(uint32_t line, uint8_t color_mode,
                           uint32_t* red0, uint32_t* green0, uint32_t* blue0,
-                          uint32_t right_margin, uint32_t left_margin)
+                          uint32_t left_margin)
 {
     if ((cfg_sidebar == SIDEBAR_OFF) || (line >= SIDEBAR_ROWS))
         return;
@@ -215,12 +215,11 @@ void sidebar_render_line(uint32_t line, uint8_t color_mode,
 
     // Center the 16-word (32px) content within whichever margin width the
     // current video mode has: 0 words at 640x480 (16-word margin), 10 words
-    // at 720x480 (36-word margin).
+    // at 720x480 (36-word margin). Left bar only - the right bar stays the
+    // plain black the caller's fill loop already wrote.
     uint32_t ofs = (left_margin > SIDEBAR_CONTENT_WORDS)
                        ? (left_margin - SIDEBAR_CONTENT_WORDS) / 2
                        : 0;
 
     sidebar_emit16(red0 + ofs, green0 + ofs, blue0 + ofs, bits, color_offset);
-    sidebar_emit16(red0 + right_margin + ofs, green0 + right_margin + ofs,
-                    blue0 + right_margin + ofs, bits, color_offset);
 }

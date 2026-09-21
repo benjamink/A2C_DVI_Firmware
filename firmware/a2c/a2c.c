@@ -1397,37 +1397,61 @@ void DELAYED_COPY_CODE(render_a2c)()
     // changed. Never done from inside the per-scanline render loop.
     if (cfg_sidebar == SIDEBAR_LOGO_INFO)
     {
-        char l1[5], l2[5], l3[5];
+        char l_decode[5], l_mode[5], l_lines[5], l_video[5], l_type[5];
+#ifdef FEATURE_A2_AUDIO
+        char l_sound[5], l_tone[5];
+#endif
+        const char* info_lines[SIDEBAR_MAX_INFO_LINES];
+        uint8_t     info_count = 0;
 
         if (cfg_color_style == CS_A2DVI)
-            strcpy(l1, "A2DV");
+            strcpy(l_decode, "A2DV");
         else if (cfg_color_style == CS_CLAMP)
-            strcpy(l1, "CLMP");
+            strcpy(l_decode, "CLMP");
         else
-            strcpy(l1, "NTSC");
+            strcpy(l_decode, "NTSC");
 
         if (mono_rendering)
         {
             if (color_mode == COLOR_MODE_GREEN)
-                strcpy(l2, "GRN");
+                strcpy(l_mode, "GRN");
             else if (color_mode == COLOR_MODE_AMBER)
-                strcpy(l2, "AMB");
+                strcpy(l_mode, "AMB");
             else
-                strcpy(l2, "B&W");
+                strcpy(l_mode, "B&W");
         }
         else
         {
-            strcpy(l2, (cfg_rendering_fx == FX_ENABLED) ? "MIX" : "CLR");
+            strcpy(l_mode, (cfg_rendering_fx == FX_ENABLED) ? "MIX" : "CLR");
         }
 
         if (cfg_scanline_mode == ScanlinesOn)
-            strcpy(l3, "SCAN");
+            strcpy(l_lines, "SCAN");
         else if (cfg_scanline_mode == ScanlinesMonochrome)
-            strcpy(l3, "SCNM");
+            strcpy(l_lines, "SCNM");
         else
-            strcpy(l3, "OFF");
+            strcpy(l_lines, "OFF");
 
-        sidebar_set_info(l1, l2, l3);
+        strcpy(l_video, (cfg_video_mode == Dvi640x480) ? "640" : "720");
+
+#ifdef FEATURE_A2_AUDIO
+        strcpy(l_sound, a2dvi_audio_enabled() ? "SND" : "OFF");
+        strcpy(l_tone,  (a2dvi_audio_enabled() && s_test_tone) ? "TONE" : "OFF");
+#endif
+
+        strcpy(l_type, cfg_laser_enabled ? "LASR" : "IIC");
+
+        info_lines[info_count++] = l_decode;
+        info_lines[info_count++] = l_mode;
+        info_lines[info_count++] = l_lines;
+        info_lines[info_count++] = l_video;
+#ifdef FEATURE_A2_AUDIO
+        info_lines[info_count++] = l_sound;
+        info_lines[info_count++] = l_tone;
+#endif
+        info_lines[info_count++] = l_type;
+
+        sidebar_set_info(info_lines, info_count);
     }
     sidebar_rebuild_if_dirty();
 

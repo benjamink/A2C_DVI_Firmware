@@ -42,16 +42,16 @@ static uint32_t s_sidebar_bits[SIDEBAR_ROWS];
 
 static volatile bool s_dirty = true;
 static sidebar_mode_t s_last_mode = (sidebar_mode_t)0xff; // sentinel: forces a rebuild on the first call
-static char s_info_line1[5] = "";
-static char s_info_line2[5] = "";
-static char s_info_line3[5] = "";
+static char    s_info_lines[SIDEBAR_MAX_INFO_LINES][5];
+static uint8_t s_info_count = 0;
 
 // Layout, in Apple II scanline slots (192 available):
 //   rows [0, LOGO_START_ROW)                         - blank
 //   rows [LOGO_START_ROW, LOGO_START_ROW+22)          - TV logo
 //   rows [.., + TEXT_GAP_ROWS)                        - blank
-//   rows [.., + 8), +2 gap, +8, +2 gap, +8            - 3 settings lines
-// Total used: 4 + 22 + 4 + (8+2+8+2+8) = 58 of 192 rows.
+//   rows [.., + 8), +2 gap, +8, +2 gap, ...           - one block per settings line
+// With SIDEBAR_MAX_INFO_LINES(8) lines: 4 + 22 + 4 + (8*8 + 7*2) = 108 of 192
+// rows - see the SIDEBAR_MAX_INFO_LINES comment in sidebar.h for the budget.
 #define LOGO_START_ROW  4
 #define LOGO_ROWS       SIDEBAR_LOGO_BITS_ROWS
 #define TEXT_GAP_ROWS   4
@@ -64,17 +64,28 @@ void sidebar_init(void)
     s_dirty = true;
 }
 
-void sidebar_set_info(const char* line1, const char* line2, const char* line3)
+void sidebar_set_info(const char* const* lines, uint8_t count)
 {
+    if (count > SIDEBAR_MAX_INFO_LINES)
+        count = SIDEBAR_MAX_INFO_LINES;
+
     // Cheap early-out: only mark dirty (and trigger a rebuild) if something
     // actually changed, so an idle screen doesn't rebuild every frame.
-    if ((strncmp(s_info_line1, line1, 4) != 0) ||
-        (strncmp(s_info_line2, line2, 4) != 0) ||
-        (strncmp(s_info_line3, line3, 4) != 0))
+    bool changed = (count != s_info_count);
+    for (uint8_t i = 0; (!changed) && (i < count); i++)
     {
-        strncpy(s_info_line1, line1, 4); s_info_line1[4] = 0;
-        strncpy(s_info_line2, line2, 4); s_info_line2[4] = 0;
-        strncpy(s_info_line3, line3, 4); s_info_line3[4] = 0;
+        if (strncmp(s_info_lines[i], lines[i], 4) != 0)
+            changed = true;
+    }
+
+    if (changed)
+    {
+        for (uint8_t i = 0; i < count; i++)
+        {
+            strncpy(s_info_lines[i], lines[i], 4);
+            s_info_lines[i][4] = 0;
+        }
+        s_info_count = count;
         s_dirty = true;
     }
 }
@@ -145,19 +156,16 @@ void sidebar_rebuild_if_dirty(void)
         uint32_t glyph_rows[GLYPH_ROWS];
         uint     row = TEXT_START_ROW;
 
-        sidebar_pack_text4(glyph_rows, s_info_line1);
-        for (uint g = 0; g < GLYPH_ROWS; g++)
-            s_sidebar_bits[row + g] = glyph_rows[g];
-        row += GLYPH_ROWS + LINE_GAP_ROWS;
+        for (uint8_t i = 0; i < s_info_count; i++)
+        {
+            if (row + GLYPH_ROWS > SIDEBAR_ROWS)
+                break; // defensive: SIDEBAR_MAX_INFO_LINES already keeps this from happening
 
-        sidebar_pack_text4(glyph_rows, s_info_line2);
-        for (uint g = 0; g < GLYPH_ROWS; g++)
-            s_sidebar_bits[row + g] = glyph_rows[g];
-        row += GLYPH_ROWS + LINE_GAP_ROWS;
-
-        sidebar_pack_text4(glyph_rows, s_info_line3);
-        for (uint g = 0; g < GLYPH_ROWS; g++)
-            s_sidebar_bits[row + g] = glyph_rows[g];
+            sidebar_pack_text4(glyph_rows, s_info_lines[i]);
+            for (uint g = 0; g < GLYPH_ROWS; g++)
+                s_sidebar_bits[row + g] = glyph_rows[g];
+            row += GLYPH_ROWS + LINE_GAP_ROWS;
+        }
     }
 
     s_dirty = false;

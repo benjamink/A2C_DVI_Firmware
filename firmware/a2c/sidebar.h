@@ -40,19 +40,25 @@ typedef enum
 {
     SIDEBAR_OFF       = 0, // default: bars stay plain black, exactly like today
     SIDEBAR_LOGO      = 1, // logo only
-    SIDEBAR_LOGO_INFO = 2, // logo + a 3-line settings readout underneath
+    SIDEBAR_LOGO_INFO = 2, // logo + a settings readout underneath
 } sidebar_mode_t;
 
 extern sidebar_mode_t cfg_sidebar;
 
+// Maximum number of settings-readout lines sidebar_set_info() accepts. Row
+// budget: LOGO_START_ROW(4) + LOGO_ROWS(22) + TEXT_GAP_ROWS(4) + N*(8+2)
+// must stay under SIDEBAR_ROWS(192) - 8 lines is 106 rows, comfortably so.
+#define SIDEBAR_MAX_INFO_LINES 8
+
 // One-time setup. Safe to call multiple times.
 void sidebar_init(void);
 
-// Update the (up to 4-character) settings strings shown under the logo in
-// SIDEBAR_LOGO_INFO mode. Cheap - just a string compare and copy - so it is
-// meant to be called once per frame from render_a2c(), not from a menu
+// Update the (up to 4-character each) settings strings shown under the logo
+// in SIDEBAR_LOGO_INFO mode, one line per array entry. `count` must be
+// <= SIDEBAR_MAX_INFO_LINES. Cheap - just string compares and copies - so it
+// is meant to be called once per frame from render_a2c(), not from a menu
 // callback. Does not touch the scanline-critical rendering path itself.
-void sidebar_set_info(const char* line1, const char* line2, const char* line3);
+void sidebar_set_info(const char* const* lines, uint8_t count);
 
 // Rebuilds the precomputed per-line bar content if `sidebar_set_info()` or
 // `cfg_sidebar` changed since the last rebuild. Call once per frame, e.g.

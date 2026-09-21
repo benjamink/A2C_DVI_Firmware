@@ -1425,18 +1425,23 @@ void DELAYED_COPY_CODE(render_a2c)()
             strcpy(l_mode, (cfg_rendering_fx == FX_ENABLED) ? "MIX" : "CLR");
         }
 
+        // Boolean-ish settings keep a constant 3-letter label with a
+        // trailing +/- so an "off" line still says which setting it is
+        // ("SCN-", not a bare "OFF" indistinguishable from the sound/tone
+        // rows). ScanlinesMonochrome keeps its own distinct suffix (M)
+        // since it's a real third state, not just on/off.
         if (cfg_scanline_mode == ScanlinesOn)
-            strcpy(l_lines, "SCAN");
+            strcpy(l_lines, "SCN+");
         else if (cfg_scanline_mode == ScanlinesMonochrome)
             strcpy(l_lines, "SCNM");
         else
-            strcpy(l_lines, "OFF");
+            strcpy(l_lines, "SCN-");
 
         strcpy(l_video, (cfg_video_mode == Dvi640x480) ? "640" : "720");
 
 #ifdef FEATURE_A2_AUDIO
-        strcpy(l_sound, a2dvi_audio_enabled() ? "SND" : "OFF");
-        strcpy(l_tone,  (a2dvi_audio_enabled() && s_test_tone) ? "TONE" : "OFF");
+        strcpy(l_sound, a2dvi_audio_enabled() ? "SND+" : "SND-");
+        strcpy(l_tone,  (a2dvi_audio_enabled() && s_test_tone) ? "TON+" : "TON-");
 #endif
 
         strcpy(l_type, cfg_laser_enabled ? "LASR" : "IIC");
